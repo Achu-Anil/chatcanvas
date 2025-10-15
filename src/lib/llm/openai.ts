@@ -1,12 +1,12 @@
 import OpenAI from "openai";
 import type {
   LLMProvider,
-  ChatRequest,
+  ChatRequestInput,
   ChatResponse,
   StreamChunk,
   Message,
 } from "./types";
-import { LLMAPIError } from "./types";
+import { LLMAPIError, ChatSchema } from "./types";
 
 /**
  * OpenAI LLM Provider
@@ -66,13 +66,16 @@ export class OpenAIProvider implements LLMProvider {
   /**
    * Non-streaming chat completion
    */
-  async chat(request: ChatRequest): Promise<ChatResponse> {
+  async chat(requestInput: ChatRequestInput): Promise<ChatResponse> {
     if (!this.client) {
       throw new LLMAPIError(
         "OpenAI API key not configured. Set OPENAI_API_KEY environment variable.",
         this.getName()
       );
     }
+
+    // Validate and apply defaults
+    const request = ChatSchema.parse(requestInput);
 
     try {
       const response = await this.client.chat.completions.create({
@@ -113,13 +116,16 @@ export class OpenAIProvider implements LLMProvider {
   /**
    * Streaming chat completion using Web Streams API
    */
-  chatStream(request: ChatRequest): ReadableStream<StreamChunk> {
+  chatStream(requestInput: ChatRequestInput): ReadableStream<StreamChunk> {
     if (!this.client) {
       throw new LLMAPIError(
         "OpenAI API key not configured. Set OPENAI_API_KEY environment variable.",
         this.getName()
       );
     }
+
+    // Validate and apply defaults
+    const request = ChatSchema.parse(requestInput);
 
     const client = this.client;
     const model = request.model || this.defaultModel;

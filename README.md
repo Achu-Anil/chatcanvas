@@ -6,8 +6,8 @@ ChatCanvas combines modern web development with enterprise-grade AI infrastructu
 
 ## ✨ Features
 
-- 🤖 **Universal LLM Adapters** - Swap between OpenAI, Anthropic, and other providers with a unified interface
-- ⚡ **Streaming Responses** - Real-time AI responses with React Server Components and streaming APIs
+- 🤖 **Universal LLM Adapters** - Swap between OpenAI and Anthropic providers with a unified interface (both with full streaming support)
+- ⚡ **Streaming Responses** - Real-time AI responses with Web Streams API and SSE streaming
 - 📊 **PostHog Analytics** - Built-in user analytics and feature flags for data-driven decisions
 - 🗄️ **Prisma ORM** - Type-safe database access with migrations and seeding
 - 🚀 **CI/CD Ready** - Pre-configured GitHub Actions for testing and deployment

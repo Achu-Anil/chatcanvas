@@ -29,6 +29,11 @@ export const ChatSchema = z.object({
 export type ChatRequest = z.infer<typeof ChatSchema>;
 
 /**
+ * Chat request input (before Zod defaults are applied)
+ */
+export type ChatRequestInput = z.input<typeof ChatSchema>;
+
+/**
  * Token usage information
  */
 export interface TokenUsage {
@@ -65,12 +70,12 @@ export interface LLMProvider {
   /**
    * Generate a chat completion (non-streaming)
    */
-  chat(request: ChatRequest): Promise<ChatResponse>;
+  chat(request: ChatRequestInput): Promise<ChatResponse>;
 
   /**
    * Generate a chat completion with streaming
    */
-  chatStream(request: ChatRequest): ReadableStream<StreamChunk>;
+  chatStream(request: ChatRequestInput): ReadableStream<StreamChunk>;
 
   /**
    * Get the provider name
