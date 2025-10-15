@@ -11,12 +11,21 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { enabled } from "@/lib/features";
-import { Send, ChevronDown } from "lucide-react";
+import {
+  Send,
+  ChevronDown,
+  Copy,
+  Check,
+  Trash2,
+  User,
+  Bot,
+} from "lucide-react";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  timestamp?: Date;
 }
 
 interface PromptTemplate {
@@ -76,6 +85,19 @@ export default function ChatClient({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const handleClearChat = () => {
+    if (messages.length === 0) return;
+
+    const confirmed = window.confirm(
+      "Are you sure you want to clear all messages? This action cannot be undone."
+    );
+
+    if (confirmed) {
+      setMessages([]);
+      setStreamingContent("");
+    }
+  };
+
   // Auto-scroll to bottom when messages change
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -98,6 +120,7 @@ export default function ChatClient({
       id: `msg-${Date.now()}-user`,
       role: "user",
       content: trimmedInput,
+      timestamp: new Date(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
@@ -161,6 +184,7 @@ export default function ChatClient({
         id: `msg-${Date.now()}-assistant`,
         role: "assistant",
         content: accumulatedContent,
+        timestamp: new Date(),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -178,6 +202,7 @@ export default function ChatClient({
           id: `msg-${Date.now()}-error`,
           role: "assistant",
           content: `Error: ${error.message}. Please try again.`,
+          timestamp: new Date(),
         };
         setMessages((prev) => [...prev, errorMessage]);
       }
@@ -222,6 +247,25 @@ export default function ChatClient({
 
   return (
     <div className="flex flex-col h-screen bg-background">
+      {/* Header with Clear Chat Button */}
+      {messages.length > 0 && (
+        <div className="border-b bg-background sticky top-0 z-10">
+          <div className="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 className="text-lg font-semibold">Chat</h1>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearChat}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              aria-label="Clear chat"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Clear Chat
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
         <div className="max-w-3xl mx-auto">
@@ -240,12 +284,15 @@ export default function ChatClient({
             <MessageBubble key={message.id} message={message} />
           ))}
 
+          {isStreaming && !streamingContent && <LoadingShimmer />}
+
           {streamingContent && (
             <MessageBubble
               message={{
                 id: "streaming",
                 role: "assistant",
                 content: streamingContent,
+                timestamp: new Date(),
               }}
               isStreaming
             />
@@ -333,6 +380,26 @@ interface MessageBubbleProps {
 
 function MessageBubble({ message, isStreaming = false }: MessageBubbleProps) {
   const isUser = message.role === "user";
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+    }
+  };
+
+  const formatTime = (date?: Date) => {
+    if (!date) return "";
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(date);
+  };
 
   return (
     <div
@@ -344,29 +411,87 @@ function MessageBubble({ message, isStreaming = false }: MessageBubbleProps) {
       {/* Avatar */}
       <div
         className={cn(
-          "flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full text-sm font-medium",
+          "flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-full border-2",
           isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-muted-foreground"
+            ? "bg-primary text-primary-foreground border-primary"
+            : "bg-background text-foreground border-border"
         )}
       >
-        {isUser ? "U" : "AI"}
+        {isUser ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
       </div>
 
       {/* Message Content */}
       <div
         className={cn(
-          "flex flex-col gap-2 rounded-lg px-4 py-3 max-w-[80%]",
-          isUser
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-foreground"
+          "flex flex-col gap-1 max-w-[80%]",
+          isUser ? "items-end" : "items-start"
         )}
       >
-        <div className="prose prose-sm dark:prose-invert max-w-none break-words">
-          {message.content}
-          {isStreaming && (
-            <span className="inline-block w-2 h-4 ml-1 bg-current animate-pulse" />
+        {/* Timestamp */}
+        {message.timestamp && (
+          <div className="text-xs text-muted-foreground px-1">
+            {formatTime(message.timestamp)}
+          </div>
+        )}
+
+        {/* Message Bubble */}
+        <div
+          className={cn(
+            "rounded-lg px-4 py-3 relative group/message",
+            isUser
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-foreground"
           )}
+        >
+          <div className="prose prose-sm dark:prose-invert max-w-none break-words">
+            {message.content}
+            {isStreaming && (
+              <span className="inline-block w-2 h-4 ml-1 bg-current animate-pulse" />
+            )}
+          </div>
+
+          {/* Copy Button */}
+          {!isStreaming && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleCopy}
+              className={cn(
+                "absolute -top-2 opacity-0 group-hover/message:opacity-100 transition-opacity h-7 w-7",
+                isUser ? "-left-2" : "-right-2",
+                isUser
+                  ? "hover:bg-primary-foreground/20 text-primary-foreground"
+                  : "hover:bg-muted-foreground/20"
+              )}
+              aria-label="Copy message"
+            >
+              {copied ? (
+                <Check className="h-3 w-3" />
+              ) : (
+                <Copy className="h-3 w-3" />
+              )}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoadingShimmer() {
+  return (
+    <div className="flex gap-3">
+      {/* Avatar */}
+      <div className="flex h-10 w-10 shrink-0 select-none items-center justify-center rounded-full border-2 bg-background text-foreground border-border">
+        <Bot className="h-5 w-5" />
+      </div>
+
+      {/* Shimmer Content */}
+      <div className="flex flex-col gap-2 max-w-[80%]">
+        <div className="rounded-lg bg-muted px-4 py-3 space-y-2">
+          <div className="h-4 bg-muted-foreground/20 rounded animate-pulse w-3/4" />
+          <div className="h-4 bg-muted-foreground/20 rounded animate-pulse w-full" />
+          <div className="h-4 bg-muted-foreground/20 rounded animate-pulse w-2/3" />
         </div>
       </div>
     </div>
