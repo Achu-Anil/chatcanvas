@@ -10,7 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { enabled } from "@/lib/features";
+import { enabled, FeatureFlags } from "@/lib/featureFlags";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Send,
   ChevronDown,
@@ -243,28 +244,32 @@ export default function ChatClient({
     textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
   };
 
-  const showTemplates = enabled("templates");
+  const showTemplates = enabled(FeatureFlags.TEMPLATES);
+  const showDarkMode = enabled(FeatureFlags.DARK_MODE);
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Header with Clear Chat Button */}
-      {messages.length > 0 && (
-        <div className="border-b bg-background sticky top-0 z-10">
-          <div className="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 className="text-lg font-semibold">Chat</h1>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClearChat}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-              aria-label="Clear chat"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Clear Chat
-            </Button>
+      {/* Header with Theme Toggle and Clear Chat Button */}
+      <div className="border-b bg-background sticky top-0 z-10">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
+          <h1 className="text-lg font-semibold">Chat</h1>
+          <div className="flex items-center gap-2">
+            {showDarkMode && <ThemeToggle />}
+            {messages.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleClearChat}
+                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                aria-label="Clear chat"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear Chat
+              </Button>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
