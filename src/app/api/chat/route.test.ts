@@ -252,7 +252,9 @@ describe("/api/chat route", () => {
     });
 
     it("should handle saveChat errors gracefully", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       const req = new Request("http://localhost:3000/api/chat", {
         method: "POST",
@@ -292,7 +294,9 @@ describe("/api/chat route", () => {
     });
 
     it("should return 500 for unexpected errors", async () => {
-      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
 
       const req = new Request("http://localhost:3000/api/chat", {
         method: "POST",
