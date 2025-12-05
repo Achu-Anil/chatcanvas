@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { enabled, FeatureFlags } from "@/lib/featureFlags";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { trackEvent } from "@/lib/posthog.client";
 import {
   Send,
   ChevronDown,
@@ -134,6 +135,14 @@ export default function ChatClient({
       textareaRef.current.style.height = "auto";
     }
 
+    // Track chat started event
+    const startTime = Date.now();
+    trackEvent("chat_started", {
+      chatId,
+      messageLength: trimmedInput.length,
+      messageCount: messages.length + 1,
+    });
+
     try {
       // Create abort controller for this request
       const controller = new AbortController();
@@ -170,6 +179,9 @@ export default function ChatClient({
         throw new Error("No response body");
       }
 
+      // Extract provider from response headers
+      const provider = response.headers.get("X-Provider") || "unknown";
+
       while (true) {
         const { done, value } = await reader.read();
 
@@ -179,6 +191,9 @@ export default function ChatClient({
         accumulatedContent += text;
         setStreamingContent(accumulatedContent);
       }
+
+      // Calculate latency
+      const latency = Date.now() - startTime;
 
       // Add the completed message
       const assistantMessage: Message = {
@@ -190,6 +205,15 @@ export default function ChatClient({
 
       setMessages((prev) => [...prev, assistantMessage]);
       setStreamingContent("");
+
+      // Track chat completed event
+      trackEvent("chat_completed", {
+        chatId,
+        provider,
+        latency,
+        responseLength: accumulatedContent.length,
+        messageCount: messages.length + 2,
+      });
     } catch (error: unknown) {
       if (error instanceof Error) {
         if (error.name === "AbortError") {
@@ -197,6 +221,18 @@ export default function ChatClient({
           return;
         }
         console.error("Error sending message:", error);
+
+        // Calculate latency even for errors
+        const latency = Date.now() - startTime;
+
+        // Track chat error event
+        trackEvent("chat_error", {
+          chatId,
+          error: error.message,
+          errorType: error.name,
+          latency,
+          messageCount: messages.length + 1,
+        });
 
         // Show error message
         const errorMessage: Message = {
