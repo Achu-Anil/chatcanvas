@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  KeyboardEvent,
+  useOptimistic,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -28,6 +34,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp?: Date;
+  pending?: boolean;
 }
 
 interface PromptTemplate {
@@ -75,6 +82,10 @@ export default function ChatClient({
   initialMessages = [],
 }: ChatClientProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [optimisticMessages, addOptimisticMessage] = useOptimistic(
+    messages,
+    (state, newMessage: Message) => [...state, newMessage]
+  );
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingContent, setStreamingContent] = useState("");
@@ -107,7 +118,7 @@ export default function ChatClient({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, streamingContent]);
+  }, [optimisticMessages, streamingContent]);
 
   // Focus textarea on mount
   useEffect(() => {
@@ -123,12 +134,18 @@ export default function ChatClient({
       role: "user",
       content: trimmedInput,
       timestamp: new Date(),
+      pending: true,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsStreaming(true);
     setStreamingContent("");
+
+    // Optimistically add message
+    addOptimisticMessage(userMessage);
+
+    // Actually add to state after optimistic update
+    setMessages((prev) => [...prev, userMessage]);
 
     // Reset textarea height
     if (textareaRef.current) {
@@ -310,7 +327,7 @@ export default function ChatClient({
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
         <div className="max-w-3xl mx-auto">
-          {messages.length === 0 && !streamingContent && (
+          {optimisticMessages.length === 0 && !streamingContent && (
             <div className="text-center text-muted-foreground py-12">
               <h2 className="text-2xl font-semibold mb-2">
                 Start a conversation
@@ -321,7 +338,7 @@ export default function ChatClient({
             </div>
           )}
 
-          {messages.map((message) => (
+          {optimisticMessages.map((message) => (
             <MessageBubble key={message.id} message={message} />
           ))}
 
